@@ -1,0 +1,40 @@
+---
+title: "Data Analysis Project Proposal"
+author: "Manish Gupta (manishg2@illinois.edu), Harsh Sinha (hksinha2@illinois.edu)"
+output: html_document
+---
+
+#### **Project Title**: Price Predication of Used Cars
+
+#### **Description of the Dataset**:
+
+The dataset can be found at https://www.kaggle.com/avikasliwal/used-cars-price-prediction#train-data.csv
+
+It has following parameters:
+
+**Name**: The brand and model of the car.  
+**Location**: The location in which the car is being sold or is available for purchase.  
+**Year**: The year or edition of the model.    
+**Kilometers_Driven**: The total kilometres driven in the car by the previous owner(s) in KM.  
+**Fuel_Type**:  The type of fuel used by the car. (Petrol / Diesel / Electric / CNG / LPG)  
+**Transmission**: The type of transmission used by the car. (Automatic / Manual)  
+**Owner_Type**:  Whether the ownership is Firsthand, Second hand or other.  
+**Mileage**:  The standard mileage offered by the car company in kmpl or km/kg  
+**Engine**: The displacement volume of the engine in cc.  
+**Power**: The maximum power of the engine in bhp.  
+**Seats**: The number of seats in the car.  
+**New_Price**: The price of a new car of the same model.  
+**Price**: The price of the used car in INR Lakhs.
+
+#### **A brief statement of the business**: 
+
+The price prediction for used cars is a very important part of used car business. Predicting prices accurately can help businesses and customers to settle deal at a fair price.
+
+#### **Evidence that the data can be loaded into R**: 
+
+```{r}
+library(readr)
+train_data = read_csv("./train-data.csv")
+head(train_data)
+```
+

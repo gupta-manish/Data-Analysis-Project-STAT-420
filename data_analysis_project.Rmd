@@ -1,0 +1,16 @@
+---
+title: "Price Predication of Used Cars"
+author: "Manish Gupta (manishg2@illinois.edu), Harshit Sinha (hksinha2@illinois.ed)"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+The price prediction for used cars is a very important part of used car business. Predicting prices accurately can help businesses and customers to settle deal at a fair price.
+
+## Methods
+
