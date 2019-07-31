@@ -14,3 +14,209 @@ The price prediction for used cars is a very important part of used car business
 
 ## Methods
 
+```{r}
+#reading data from the csv
+library(readr)
+train_data = read_csv("./train-data.csv")
+test_data = read_csv("./test-data.csv")
+```
+
+#### Cleaning the dataset
+
+The first thing we did was to clean the dataset that we are given. In the dataset, the values for `Power`, `Mileage` and `Engine` are added as strings with their units along with them. So we had to remove those units and convert their types to numeric. 
+
+Variables like `Location`,`Transmission`, `Fuel_Type` and `Owner_Type` can be considered as factor variables therefore they were changed to factor variables.
+
+Columns for `X1` and `Name` were removed as they were not really affecting the price.
+
+```{r warning=FALSE}
+#clean data function
+clean_data = function(data) {
+  #removing New  Price column
+  data = data[,-13]
+  remove_units = function(values) {
+    remove_units_value =  function(value) {
+      as.numeric(sub("\\s+\\D+$", "", value))
+    }
+    unlist(lapply(values, remove_units_value))
+  }
+  data$Location = factor(data$Location)
+  data$Transmission = factor(data$Transmission)
+  data$Fuel_Type = factor(data$Fuel_Type)
+  data$Owner_Type = factor(data$Owner_Type)
+  data$Power = remove_units(data$Power)
+  data$Mileage = remove_units(data$Mileage)
+  data$Engine = remove_units(data$Engine)
+  data = na.omit(data)
+  data = data[-which(data$Mileage == 0),]
+  data = data[,-c(1,2)]
+  return(data)
+}
+
+train_data = clean_data(train_data)
+test_data = clean_data(test_data)
+```
+
+#### Splitting the dataset
+
+We split our `train_data` into `trn_data` and `tst_data`. The `test_data` provided in the file with the dataset is for competition and does not include any `Price` paramter
+
+```{r}
+smp_size = floor(0.75 * nrow(train_data))
+
+## set the seed to make your partition reproducible
+set.seed(42)
+train_ind = sample(seq_len(nrow(train_data)), size = smp_size)
+
+trn_data = train_data[train_ind, ]
+tst_data = train_data[-train_ind, ]
+
+head(trn_data)
+```
+
+#### Correlation between parameters
+
+```{r}
+cor(trn_data[c("Kilometers_Driven","Mileage","Engine","Power")])
+```
+
+We can see from the correlation matrix that Power and Engine are very much correlated. Also Engine and Mileage also upto some extent. We will have to be careful before using all of them for our model.
+
+#### Plotting relationships between the Price and other paramters
+
+```{r}
+plot(Price ~ Power, data = trn_data, 
+     col = "dodgerblue",
+     main = "Price and Power relation")
+```
+
+```{r}
+plot(log(Price) ~ Power, data = trn_data, 
+     col = "dodgerblue",
+     main = "log(Price) and Power relation")
+```
+
+```{r}
+plot(log(Price) ~ log(Power), data = trn_data, 
+     col = "dodgerblue",
+     main = "log(Price) and log(Power) relation")
+```
+
+```{r}
+plot(log(Price) ~ log(Mileage), data = trn_data, col = "dodgerblue",
+     main = "log(Price) and log(Mileage) relation")
+```
+
+
+```{r}
+plot(log(Price) ~ log(Engine), data = trn_data, col = "dodgerblue",
+     main = "log(Price) and log(Engine) relation")
+```
+
+From these plots we were inferred that the logs of the above parameters are better suited for regression.
+
+#### Functions to check Assumptions
+
+```{r}
+plot_fit_res = function(model) {
+  plot(fitted(model), resid(model), col = "grey", pch = 20,
+  xlab = "Fitted", ylab = "Residuals", main = "Data from Model 1")
+  abline(h = 0, col = "darkorange", lwd = 2)
+}
+plot_qq = function(model) {
+  qqnorm(resid(model), main = "Normal Q-Q Plot", col = "darkgrey")
+  qqline(resid(model), col = "dodgerblue", lwd = 2)
+}
+```
+
+#### Functions to compare different models
+
+```{r}
+calc_aic = function(model) {
+  rss = sum(resid(model)^2)
+  n = length(resid(model))
+  p = length(model$coefficients)
+  return(n*log(rss/n)+2*p)
+}
+calc_bic = function(model) {
+  rss = sum(resid(model)^2)
+  n = length(resid(model))
+  p = length(model$coefficients)
+  return(n*log(rss/n)+(log(n)*p))
+}
+calc_loocv_rmse = function(model) {
+  return(sqrt(mean((resid(model) / (1 - hatvalues(model))) ^ 2)))
+}
+calc_adj_r2 = function(model) {
+  mod_sum = summary(model)
+  return(mod_sum[["adj.r.squared"]])
+}
+calc_quality_criterions = function(model) {
+  return(data.frame("AIC" = calc_aic(model),
+                    "BIC" = calc_bic(model),
+                    "LOOCV_RMSE" = calc_loocv_rmse(model),
+                    "ADJ_R_SQ" = calc_adj_r2(model)
+                    ))
+}
+```
+
+#### Creating and testing different models
+
+The first model we created was an additive model usig all the parameters.
+
+```{r}
+model1 = lm(Price ~ ., data = trn_data)
+calc_quality_criterions(model1)
+plot_fit_res(model1)
+plot_qq(model1)
+```
+
+As we have already seen from the plots that it is better to use the log for numeric parameters we also created the model using the logs for Power, Mileage and Engine.
+
+```{r}
+model2 = lm(log(Price) ~ Location+Year+Kilometers_Driven+Fuel_Type+Transmission+Owner_Type+log(Mileage)+log(Engine)+log(Power)+Seats, data = trn_data)
+calc_quality_criterions(model2)
+plot_fit_res(model2)
+plot_qq(model2)
+```
+
+We were able to improve all the criterias by just using log. AIC, BIC and LOOCV_RMSE decreased and ADJ_R_SQ increased.
+
+We tried to further decrease the AIC and BIC by using the Backward search on the model2.
+
+```{r}
+model3 = step(model2, direction = "backward")
+```
+
+```{r}
+n = length(resid(model2))
+model4 = step(model2, direction = "backward", k = log(n))
+calc_quality_criterions(model4)
+```
+
+Using model4 we were able to reduce the LOOCV_RMSE and the ADJ_R_SQ further with minimal effect on AIC.
+
+From the correlation testng earlier we had found that Engine and Power are highly corrlated. This means we should also try by removing the Engine Parameter and see if it improves anything.
+
+```{r}
+model5 = lm(log(Price) ~ Location+Year+Kilometers_Driven+Fuel_Type+Transmission+Owner_Type+log(Mileage)+log(Power)+Seats, data = trn_data)
+model5 = step(model5, direction = "backward", k = log(n))
+calc_quality_criterions(model5)
+```
+
+```{r}
+anova(model4, model5)
+```
+
+After checking the anova test and quality criterions we can say that it is better to have the Engine parameter.
+
+We then also tried some interaction models
+
+```{r}
+model6 = lm(log(Price) ~ (Location+Year+Kilometers_Driven+Fuel_Type+Transmission+Owner_Type+log(Mileage)+log(Engine)+log(Power)+Seats)^2, data = trn_data)
+model7 = step(model6, direction = "backward", trace = FALSE)
+calc_quality_criterions(model7)
+```
+
+Using model7 we were further able to decrease the AIC and BIC from the additive models, but the LOOCV_RMSE is coming Inf which appears to be a problem.
+
