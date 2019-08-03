@@ -34,7 +34,7 @@ The price prediction for used cars is a very important part of used car business
 
 ## Methods
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 #reading data from the csv
 library(readr)
 train_data = read_csv("./train-data.csv")
@@ -60,7 +60,6 @@ clean_data = function(data) {
     }
     unlist(lapply(values, remove_units_value))
   }
-  
   data$Location = factor(data$Location)
   data$Transmission = factor(data$Transmission)
   data$Fuel_Type = factor(data$Fuel_Type)
@@ -102,6 +101,10 @@ head(trn_data)
 
 ```{r}
 cor(trn_data[c("Kilometers_Driven","Mileage","Engine","Power")])
+
+pairs(trn_data[c("Kilometers_Driven","Mileage","Engine","Power", "Transmission", "Fuel_Type", "Year", "Price")])
+
+
 ```
 
 We can see from the correlation matrix that Power and Engine are very much correlated. Also Engine and Mileage also upto some extent. We will have to be careful before using all of them for our model.
@@ -155,6 +158,12 @@ plot(Price ~ Kilometers_Driven, data = trn_data, col = "dodgerblue",
 plot(log(Price) ~ log(Kilometers_Driven), data = trn_data, col = "dodgerblue",
      main = "log(Price) and log(Engine) relation")
 ```
+
+```{r}
+plot(log(Price) ~ Year, data = trn_data, col = "dodgerblue",
+     main = "log(Price) and log(Year) relation")
+```
+
 
 From these plots we were inferred that the logs of the above parameters are better suited for regression.
 
@@ -212,7 +221,13 @@ calc_quality_criterions = function(model) {
                     "ADJ_R_SQ" = calc_adj_r2(model)
                     ))
 }
+
+remove_outliers = function(model, data) {
+  rstandard(model)[abs(rstandard(model)) > 2]
+  data = data[abs(rstandard(model)) < 2, ]
+}
 ```
+
 
 #### Creating and testing different models
 
@@ -254,6 +269,11 @@ From the correlation testng earlier we had found that Engine and Power are highl
 
 ```{r}
 model5 = lm(log(Price) ~ Location+Year+log(Kilometers_Driven)+Fuel_Type+Transmission+Owner_Type+log(Mileage)+log(Power)+Seats, data = trn_data)
+
+trn_data = remove_outliers(model5, trn_data)
+
+model5 = lm(log(Price) ~ Location+Year+log(Kilometers_Driven)+Fuel_Type+Transmission+Owner_Type+log(Mileage)+log(Power)+Seats, data = trn_data)
+
 model5 = step(model5, direction = "backward", k = log(n))
 calc_quality_criterions(model5)
 plot_fit_res(model5, title = "Residuals vs fitted plot for Model5")
