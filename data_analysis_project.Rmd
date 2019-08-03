@@ -113,6 +113,11 @@ plot(log(Price) ~ log(Engine), data = trn_data, col = "dodgerblue",
      main = "log(Price) and log(Engine) relation")
 ```
 
+```{r}
+plot(log(Price) ~ log(Kilometers_Driven), data = trn_data, col = "dodgerblue",
+     main = "log(Price) and log(Engine) relation")
+```
+
 From these plots we were inferred that the logs of the above parameters are better suited for regression.
 
 #### Functions to check Assumptions
@@ -126,6 +131,12 @@ plot_fit_res = function(model) {
 plot_qq = function(model) {
   qqnorm(resid(model), main = "Normal Q-Q Plot", col = "darkgrey")
   qqline(resid(model), col = "dodgerblue", lwd = 2)
+}
+plot_fit_pred = function(model, data) {
+  predicted = predict(model, newdata = data)
+  plot(predicted, log(data$Price), col = "grey", pch = 20,
+  xlab = "Predicted", ylab = "Actual", main = "Data from Model 1")
+  abline(a = 0, b = 1, col = "orange", lwd = 3)
 }
 ```
 
@@ -174,7 +185,7 @@ plot_qq(model1)
 As we have already seen from the plots that it is better to use the log for numeric parameters we also created the model using the logs for Power, Mileage and Engine.
 
 ```{r}
-model2 = lm(log(Price) ~ Location+Year+Kilometers_Driven+Fuel_Type+Transmission+Owner_Type+log(Mileage)+log(Engine)+log(Power)+Seats, data = trn_data)
+model2 = lm(log(Price) ~ Location+Year+log(Kilometers_Driven)+Fuel_Type+Transmission+Owner_Type+log(Mileage)+log(Engine)+log(Power)+Seats, data = trn_data)
 calc_quality_criterions(model2)
 plot_fit_res(model2)
 plot_qq(model2)
@@ -199,23 +210,21 @@ Using model4 we were able to reduce the LOOCV_RMSE and the ADJ_R_SQ further with
 From the correlation testng earlier we had found that Engine and Power are highly corrlated. This means we should also try by removing the Engine Parameter and see if it improves anything.
 
 ```{r}
-model5 = lm(log(Price) ~ Location+Year+Kilometers_Driven+Fuel_Type+Transmission+Owner_Type+log(Mileage)+log(Power)+Seats, data = trn_data)
+model5 = lm(log(Price) ~ Location+Year+log(Kilometers_Driven)+Fuel_Type+Transmission+Owner_Type+log(Mileage)+log(Power)+Seats, data = trn_data)
 model5 = step(model5, direction = "backward", k = log(n))
 calc_quality_criterions(model5)
+plot_fit_res(model5)
+plot_fit_pred(model5, trn_data)
 ```
 
-```{r}
-anova(model4, model5)
-```
-
-After checking the anova test and quality criterions we can say that it is better to have the Engine parameter.
 
 We then also tried some interaction models
 
 ```{r}
-model6 = lm(log(Price) ~ (Location+Year+Kilometers_Driven+Fuel_Type+Transmission+Owner_Type+log(Mileage)+log(Engine)+log(Power)+Seats)^2, data = trn_data)
+model6 = lm(log(Price) ~ (Location+Year+log(Kilometers_Driven)+Fuel_Type+Transmission+Owner_Type+log(Mileage)+log(Engine)+log(Power)+Seats)^2, data = trn_data)
 model7 = step(model6, direction = "backward", trace = FALSE)
 calc_quality_criterions(model7)
+plot_fit_pred(model7, trn_data)
 ```
 
 Using model7 we were further able to decrease the AIC and BIC from the additive models, but the LOOCV_RMSE is coming Inf which appears to be a problem.
