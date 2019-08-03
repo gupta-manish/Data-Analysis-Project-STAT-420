@@ -10,7 +10,27 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Introduction
 
-The price prediction for used cars is a very important part of used car business. Predicting prices accurately can help businesses and customers to settle deal at a fair price.
+#### **Description of the Dataset**:
+
+The dataset can be found at https://www.kaggle.com/avikasliwal/used-cars-price-prediction#train-data.csv
+
+It has following parameters:
+
+**Name**: The brand and model of the car.  
+**Location**: The location in which the car is being sold or is available for purchase.  
+**Year**: The year or edition of the model.    
+**Kilometers_Driven**: The total kilometres driven in the car by the previous owner(s) in KM.  
+**Fuel_Type**:  The type of fuel used by the car. (Petrol / Diesel / Electric / CNG / LPG)  
+**Transmission**: The type of transmission used by the car. (Automatic / Manual)  
+**Owner_Type**:  Whether the ownership is Firsthand, Second hand or other.  
+**Mileage**:  The standard mileage offered by the car company in kmpl or km/kg  
+**Engine**: The displacement volume of the engine in cc.  
+**Power**: The maximum power of the engine in bhp.  
+**Seats**: The number of seats in the car.  
+**New_Price**: The price of a new car of the same model.  
+**Price**: The price of the used car in INR Lakhs.
+
+The price prediction for used cars is a very important part of used car business. Predicting prices accurately can help businesses and customers to settle deal at a fair price. Vehicle price prediction especially when the vehicle is used and not coming direct from the factory, is both a critical and important task. With increase in demand for used cars and upto 8 percent decrease in demand for the new cars in 2013,more and more vehicle buyers are finding alternatives of buying new cars outright. 
 
 ## Methods
 
@@ -40,6 +60,7 @@ clean_data = function(data) {
     }
     unlist(lapply(values, remove_units_value))
   }
+  
   data$Location = factor(data$Location)
   data$Transmission = factor(data$Transmission)
   data$Fuel_Type = factor(data$Fuel_Type)
@@ -49,7 +70,10 @@ clean_data = function(data) {
   data$Engine = remove_units(data$Engine)
   data = na.omit(data)
   data = data[-which(data$Mileage == 0),]
+  
+  #removing Name and X1 columnns from the dataset
   data = data[,-c(1,2)]
+  
   return(data)
 }
 
@@ -103,13 +127,27 @@ plot(log(Price) ~ log(Power), data = trn_data,
 ```
 
 ```{r}
+plot(Price ~ Mileage, data = trn_data, col = "dodgerblue",
+     main = "log(Price) and log(Mileage) relation")
+```
+
+```{r}
 plot(log(Price) ~ log(Mileage), data = trn_data, col = "dodgerblue",
      main = "log(Price) and log(Mileage) relation")
 ```
 
+```{r}
+plot(Price ~ Engine, data = trn_data, col = "dodgerblue",
+     main = "log(Price) and log(Engine) relation")
+```
 
 ```{r}
 plot(log(Price) ~ log(Engine), data = trn_data, col = "dodgerblue",
+     main = "log(Price) and log(Engine) relation")
+```
+
+```{r}
+plot(Price ~ Kilometers_Driven, data = trn_data, col = "dodgerblue",
      main = "log(Price) and log(Engine) relation")
 ```
 
@@ -123,19 +161,19 @@ From these plots we were inferred that the logs of the above parameters are bett
 #### Functions to check Assumptions
 
 ```{r}
-plot_fit_res = function(model) {
+plot_fit_res = function(model, title = "") {
   plot(fitted(model), resid(model), col = "grey", pch = 20,
-  xlab = "Fitted", ylab = "Residuals", main = "Data from Model 1")
+  xlab = "Fitted", ylab = "Residuals", main = title)
   abline(h = 0, col = "darkorange", lwd = 2)
 }
-plot_qq = function(model) {
-  qqnorm(resid(model), main = "Normal Q-Q Plot", col = "darkgrey")
+plot_qq = function(model, title = "") {
+  qqnorm(resid(model), main = title, col = "darkgrey")
   qqline(resid(model), col = "dodgerblue", lwd = 2)
 }
-plot_fit_pred = function(model, data) {
+plot_fit_pred = function(model, data, title = "") {
   predicted = predict(model, newdata = data)
   plot(predicted, log(data$Price), col = "grey", pch = 20,
-  xlab = "Predicted", ylab = "Actual", main = "Data from Model 1")
+  xlab = "Predicted", ylab = "Actual", main = title)
   abline(a = 0, b = 1, col = "orange", lwd = 3)
 }
 ```
@@ -162,6 +200,11 @@ calc_adj_r2 = function(model) {
   mod_sum = summary(model)
   return(mod_sum[["adj.r.squared"]])
 }
+calc_rmse = function(model, data) {
+  y_hat = exp(predict(model, newdata = data))
+  y = data$Price
+  return(sqrt(mean((y_hat - y)^2)))
+}
 calc_quality_criterions = function(model) {
   return(data.frame("AIC" = calc_aic(model),
                     "BIC" = calc_bic(model),
@@ -178,17 +221,17 @@ The first model we created was an additive model usig all the parameters.
 ```{r}
 model1 = lm(Price ~ ., data = trn_data)
 calc_quality_criterions(model1)
-plot_fit_res(model1)
-plot_qq(model1)
+plot_fit_res(model1, title = "Residuals vs fitted plot for Model1")
+plot_qq(model1, title = "QQ plot for Model1")
 ```
 
-As we have already seen from the plots that it is better to use the log for numeric parameters we also created the model using the logs for Power, Mileage and Engine.
+As we have already seen from the plots that it is better to use the log for numeric parameters we also created the model using the logs for Power, Mileage, Engine and Kilometers driven.
 
 ```{r}
 model2 = lm(log(Price) ~ Location+Year+log(Kilometers_Driven)+Fuel_Type+Transmission+Owner_Type+log(Mileage)+log(Engine)+log(Power)+Seats, data = trn_data)
 calc_quality_criterions(model2)
-plot_fit_res(model2)
-plot_qq(model2)
+plot_fit_res(model2, title = "Residuals vs fitted plot for Model2")
+plot_qq(model2, title = "QQ plot for Model2")
 ```
 
 We were able to improve all the criterias by just using log. AIC, BIC and LOOCV_RMSE decreased and ADJ_R_SQ increased.
@@ -213,8 +256,9 @@ From the correlation testng earlier we had found that Engine and Power are highl
 model5 = lm(log(Price) ~ Location+Year+log(Kilometers_Driven)+Fuel_Type+Transmission+Owner_Type+log(Mileage)+log(Power)+Seats, data = trn_data)
 model5 = step(model5, direction = "backward", k = log(n))
 calc_quality_criterions(model5)
-plot_fit_res(model5)
-plot_fit_pred(model5, trn_data)
+plot_fit_res(model5, title = "Residuals vs fitted plot for Model5")
+plot_qq(model5, title = "QQ plot for Model5")
+plot_fit_pred(model5, trn_data, title = "Predicted vs Actual for Model5")
 ```
 
 
@@ -224,8 +268,187 @@ We then also tried some interaction models
 model6 = lm(log(Price) ~ (Location+Year+log(Kilometers_Driven)+Fuel_Type+Transmission+Owner_Type+log(Mileage)+log(Engine)+log(Power)+Seats)^2, data = trn_data)
 model7 = step(model6, direction = "backward", trace = FALSE)
 calc_quality_criterions(model7)
-plot_fit_pred(model7, trn_data)
+plot_fit_res(model7, title = "Residuals vs fitted plot for Model7")
+plot_qq(model7, title = "QQ plot for Model7")
+plot_fit_pred(model7, trn_data, title = "Predicted vs Actual for Model7")
 ```
 
-Using model7 we were further able to decrease the AIC and BIC from the additive models, but the LOOCV_RMSE is coming Inf which appears to be a problem.
+Using model7 we were further able to decrease the AIC and BIC from the additive models.
+
+## Results
+
+We were able to find 2 models that were giving us very good results. One is additive and another is an interaction model.
+
+#### Additive Model
+
+```{r}
+model_add = model5
+calc_quality_criterions(model_add)
+plot_fit_res(model_add, title = "Residuals vs fitted plot for Additive model")
+plot_qq(model_add, title = "QQ plot for Additive model")
+plot_fit_pred(model_add, trn_data, title = "Predicted vs Actual for Additive Model For train data")
+plot_fit_pred(model_add, tst_data, title = "Predicted vs Actual for Additive Model For test data")
+calc_rmse(model_add, tst_data)
+```
+
+#### Interaction Model
+
+```{r warning=FALSE}
+model_int = model7
+calc_quality_criterions(model_int)
+plot_fit_res(model_int, title = "Residuals vs fitted plot for Interaction model")
+plot_qq(model_int, title = "QQ plot for Interaction model")
+plot_fit_pred(model_int, trn_data, title = "Predicted vs Actual for Interaction model for train data")
+plot_fit_pred(model_add, tst_data, title = "Predicted vs Actual for Interaction Model For test data")
+calc_rmse(model_int, tst_data)
+```
+
+## Discussion
+
+In context of the data, both the models use the log(Price) as the response which as shown earlier gives a better result. Parameters like Name and ID were removed from both the models. The numerical values like Kilometers_driven, Engine, Power and Mileage were shown to waork bettter when used with log. There were many dummy parameters that were used to accomodate the factor variables like `Owner_Type`, `Transmission`, `Location`.
+
+The `AIC` and `BIC` values for both the models are less which is good. The `LOOCV_RMSE` values are also less. The `adjusted r squared` values are close to 1. The residual vs fitted plot shows that both the models follow the equal assumption to some extent and the qq plots shows that the models also follow normality assumption.
+
+The Interaction model has less `RMSE` than Additive model, whcih means that the interaction model gives better results than the Additive model. 
+
+
+## Appendinx
+
+```{r eval=FALSE}
+library(readr)
+
+#reading data from the csv
+train_data = read_csv("./train-data.csv")
+test_data = read_csv("./test-data.csv")
+
+#clean data function
+clean_data = function(data) {
+  #removing New  Price column
+  data = data[,-13]
+  remove_units = function(values) {
+    remove_units_value =  function(value) {
+      as.numeric(sub("\\s+\\D+$", "", value))
+    }
+    unlist(lapply(values, remove_units_value))
+  }
+  data$Location = factor(data$Location)
+  data$Transmission = factor(data$Transmission)
+  data$Fuel_Type = factor(data$Fuel_Type)
+  data$Owner_Type = factor(data$Owner_Type)
+  data$Power = remove_units(data$Power)
+  data$Mileage = remove_units(data$Mileage)
+  data$Engine = remove_units(data$Engine)
+  data = na.omit(data)
+  data = data[-which(data$Mileage == 0),]
+  data = data[,-c(1,2)]
+  return(data)
+}
+
+loocv_rmse = function(model) {
+  sqrt(mean((resid(model) / (1 - hatvalues(model))) ^ 2))
+}
+
+train_data = clean_data(train_data)
+test_data = clean_data(test_data)
+
+pairs(train_data[c("Power","Mileage","Engine","Price")])
+
+plot(log(Price) ~ log(Power), data = train_data)
+train_data_nm = train_data
+mileage_transform = function(x) {
+  return(-x)
+}
+plot(log(Price) ~ mileage_transform(Mileage), data = train_data_nm)
+
+plot(log(Price) ~ log(Engine), data = train_data)
+
+train_data_nm = train_data
+train_data_nm = train_data[-which.max(train_data$Kilometers_Driven),]
+plot(log(Price) ~ log(Kilometers_Driven), data = train_data_nm)
+
+train_data = train_data[,-c(1,2)]
+model = lm(Price ~ ., data =  train_data)
+model_aic = step(model, direction = "backward")
+anova(model_aic, model)
+
+log_model = lm(log(Price) ~ .,data =  train_data)
+log_model_aic = step(log_model, direction = "backward")
+
+loocv_rmse(log_model)
+loocv_rmse(log_model_aic)
+sqrt(mean(resid(log_model_aic)^2))
+
+sqrt(mean(resid(model_aic)^2))
+loocv_rmse(model_aic)
+
+
+log_model_int = lm(log(Price) ~ (.)^2, data = train_data)
+log_model_int_aic = step(log_model_int, direction = "backward")
+loocv_rmse(log_model_int_aic)
+anova(log_model_aic, log_model_int_aic)
+sqrt(mean(resid(log_model_int_aic)^2))
+
+price_test_hat = exp(predict(log_model_int_aic, newdata = test_data))
+train_data = clean_data(train_data)
+test_data = clean_data(test_data)
+
+smp_size = floor(0.75 * nrow(train_data))
+
+## set the seed to make your partition reproducible
+set.seed(42)
+train_ind = sample(seq_len(nrow(train_data)), size = smp_size)
+
+trn_data = train_data[train_ind, ]
+tst_data = train_data[-train_ind, ]
+
+plot_fit_res = function(model, title = "") {
+  plot(fitted(model), resid(model), col = "grey", pch = 20,
+  xlab = "Fitted", ylab = "Residuals", main = title)
+  abline(h = 0, col = "darkorange", lwd = 2)
+}
+plot_qq = function(model, title = "") {
+  qqnorm(resid(model), main = title, col = "darkgrey")
+  qqline(resid(model), col = "dodgerblue", lwd = 2)
+}
+plot_fit_pred = function(model, data, title = "") {
+  predicted = predict(model, newdata = data)
+  plot(predicted, log(data$Price), col = "grey", pch = 20,
+  xlab = "Predicted", ylab = "Actual", main = title)
+  abline(a = 0, b = 1, col = "orange", lwd = 3)
+}
+calc_aic = function(model) {
+  rss = sum(resid(model)^2)
+  n = length(resid(model))
+  p = length(model$coefficients)
+  return(n*log(rss/n)+2*p)
+}
+calc_bic = function(model) {
+  rss = sum(resid(model)^2)
+  n = length(resid(model))
+  p = length(model$coefficients)
+  return(n*log(rss/n)+(log(n)*p))
+}
+calc_loocv_rmse = function(model) {
+  return(sqrt(mean((resid(model) / (1 - hatvalues(model))) ^ 2)))
+}
+calc_adj_r2 = function(model) {
+  mod_sum = summary(model)
+  return(mod_sum[["adj.r.squared"]])
+}
+calc_rmse = function(model, data) {
+  y_hat = exp(predict(model, newdata = data))
+  y = data$Price
+  return(sqrt(mean((y_hat - y)^2)))
+}
+calc_quality_criterions = function(model) {
+  return(data.frame("AIC" = calc_aic(model),
+                    "BIC" = calc_bic(model),
+                    "LOOCV_RMSE" = calc_loocv_rmse(model),
+                    "ADJ_R_SQ" = calc_adj_r2(model)
+                    ))
+}
+
+```
+
+
 
