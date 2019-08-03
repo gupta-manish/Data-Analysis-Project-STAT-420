@@ -37,6 +37,9 @@ The price prediction for used cars is a very important part of used car business
 ```{r message=FALSE, warning=FALSE}
 #reading data from the csv
 library(readr)
+library(lmtest)
+library(knitr)
+
 train_data = read_csv("./train-data.csv")
 test_data = read_csv("./test-data.csv")
 ```
@@ -131,7 +134,7 @@ plot(log(Price) ~ log(Power), data = trn_data,
 
 ```{r}
 plot(Price ~ Mileage, data = trn_data, col = "dodgerblue",
-     main = "log(Price) and log(Mileage) relation")
+     main = "Price and Mileage relation")
 ```
 
 ```{r}
@@ -141,7 +144,7 @@ plot(log(Price) ~ log(Mileage), data = trn_data, col = "dodgerblue",
 
 ```{r}
 plot(Price ~ Engine, data = trn_data, col = "dodgerblue",
-     main = "log(Price) and log(Engine) relation")
+     main = "Price and Engine relation")
 ```
 
 ```{r}
@@ -151,17 +154,17 @@ plot(log(Price) ~ log(Engine), data = trn_data, col = "dodgerblue",
 
 ```{r}
 plot(Price ~ Kilometers_Driven, data = trn_data, col = "dodgerblue",
-     main = "log(Price) and log(Engine) relation")
+     main = "Price and Kilometers_Driven relation")
 ```
 
 ```{r}
 plot(log(Price) ~ log(Kilometers_Driven), data = trn_data, col = "dodgerblue",
-     main = "log(Price) and log(Engine) relation")
+     main = "log(Price) and log(Kilometers_Driven) relation")
 ```
 
 ```{r}
 plot(log(Price) ~ Year, data = trn_data, col = "dodgerblue",
-     main = "log(Price) and log(Year) relation")
+     main = "log(Price) and Year relation")
 ```
 
 
@@ -215,16 +218,21 @@ calc_rmse = function(model, data) {
   return(sqrt(mean((y_hat - y)^2)))
 }
 calc_quality_criterions = function(model) {
-  return(data.frame("AIC" = calc_aic(model),
+  return(kable(data.frame("AIC" = calc_aic(model),
                     "BIC" = calc_bic(model),
                     "LOOCV_RMSE" = calc_loocv_rmse(model),
                     "ADJ_R_SQ" = calc_adj_r2(model)
-                    ))
+                    )))
 }
 
 remove_outliers = function(model, data) {
   rstandard(model)[abs(rstandard(model)) > 2]
   data = data[abs(rstandard(model)) < 2, ]
+}
+
+test_var_and_norm = function(model){
+  return(kable(data.frame("bptest p-value"= bptest(model)$p.value, 
+                    "shapiro test p-value" = shapiro.test(resid(model))$p.value)))
 }
 ```
 
@@ -238,6 +246,8 @@ model1 = lm(Price ~ ., data = trn_data)
 calc_quality_criterions(model1)
 plot_fit_res(model1, title = "Residuals vs fitted plot for Model1")
 plot_qq(model1, title = "QQ plot for Model1")
+test_var_and_norm(model1)
+
 ```
 
 As we have already seen from the plots that it is better to use the log for numeric parameters we also created the model using the logs for Power, Mileage, Engine and Kilometers driven.
@@ -247,6 +257,8 @@ model2 = lm(log(Price) ~ Location+Year+log(Kilometers_Driven)+Fuel_Type+Transmis
 calc_quality_criterions(model2)
 plot_fit_res(model2, title = "Residuals vs fitted plot for Model2")
 plot_qq(model2, title = "QQ plot for Model2")
+test_var_and_norm(model2)
+
 ```
 
 We were able to improve all the criterias by just using log. AIC, BIC and LOOCV_RMSE decreased and ADJ_R_SQ increased.
@@ -261,6 +273,8 @@ model3 = step(model2, direction = "backward")
 n = length(resid(model2))
 model4 = step(model2, direction = "backward", k = log(n))
 calc_quality_criterions(model4)
+test_var_and_norm(model4)
+
 ```
 
 Using model4 we were able to reduce the LOOCV_RMSE and the ADJ_R_SQ further with minimal effect on AIC.
@@ -279,6 +293,9 @@ calc_quality_criterions(model5)
 plot_fit_res(model5, title = "Residuals vs fitted plot for Model5")
 plot_qq(model5, title = "QQ plot for Model5")
 plot_fit_pred(model5, trn_data, title = "Predicted vs Actual for Model5")
+
+test_var_and_norm(model5)
+
 ```
 
 
@@ -291,6 +308,9 @@ calc_quality_criterions(model7)
 plot_fit_res(model7, title = "Residuals vs fitted plot for Model7")
 plot_qq(model7, title = "QQ plot for Model7")
 plot_fit_pred(model7, trn_data, title = "Predicted vs Actual for Model7")
+
+test_var_and_norm(model7)
+
 ```
 
 Using model7 we were further able to decrease the AIC and BIC from the additive models.
@@ -466,6 +486,15 @@ calc_quality_criterions = function(model) {
                     "LOOCV_RMSE" = calc_loocv_rmse(model),
                     "ADJ_R_SQ" = calc_adj_r2(model)
                     ))
+}
+remove_outliers = function(model, data) {
+  rstandard(model)[abs(rstandard(model)) > 2]
+  data = data[abs(rstandard(model)) < 2, ]
+}
+
+test_var_and_norm = function(model){
+  return(data.frame("bptest p-value"= bptest(model)$p.value, 
+                    "shapiro test p-value" = shapiro.test(resid(model))$p.value))
 }
 
 ```
